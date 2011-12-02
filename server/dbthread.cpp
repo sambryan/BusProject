@@ -5,6 +5,13 @@
 #include <cstdlib>
 #include <sqlite3.h>
 
+/* TO-DO:
+ * CHECK QUEUE ON SEMA RELEASE
+ * GET XML DATA
+ * PARSE 
+ * SEND FAKE TIME
+ * BUS FULL */
+
 void* dbthread(void* data)
 {
     DBData* thrd = (DBData*)data;
@@ -83,6 +90,11 @@ void* dbthread(void* data)
     timespec timeout;
     timeout.tv_sec = lastUpdate + 30;
     timeout.tv_nsec = 0;
+    std::vector<busCoord>* busLocations;
+
+    /* Initial Fetch */
+
+    SetBusLocations(&busLocations);
 
     /* Loop */
     while (true) {
@@ -93,6 +105,7 @@ void* dbthread(void* data)
                 printf("DB: Fetching data...\n");
 
                 // Fetch new list
+                SetBusLocations(&busLocations);
 
                 // Push to Clients
                 pthread_mutex_lock(thrd->mclients);
@@ -112,6 +125,15 @@ void* dbthread(void* data)
         else {
             printf("DB: Processing Request...\n");
             // Process Request
+            
+            pthread_mutex_lock(thrd->mreqQ);
+                Request* req = thrd->reqQ->front();
+                thrd->reqQ->pop();
+            pthread_mutex_unlock(thrd->mreqQ);
+
+            // release sema
+
+            // write (sfd) unix time to next bus
         }
 
         timeout.tv_sec = lastUpdate + 30;
